@@ -20,20 +20,22 @@ async function getVolume() {
         const head = { 'X-DUNE-API-KEY': config.DUNE_ANALYTICS_KEY }
         const query = await axios.get(endpoint, { headers: head })
 
-        let cumulative_vol = 0
+        let cumulative_vol = query.data.result.rows
+            .reduce((total, obj) => total + obj.total_vol, 0);
 
         const dataset_rows = query.data.result.rows
             .sort((a, b) => new Date(b.month) - new Date(a.month))
             .map(i => {
 
-                cumulative_vol += i.total_vol;
+                const cum_vol = Math.round(cumulative_vol)
+                cumulative_vol -= i.total_vol;
 
                 return {
                     month: dateToMJJ2(i.month),
                     total_vol: Math.round(i.total_vol),
                     us_election_vol: Math.round(i.us_election_vol),
                     other_vol: Math.round(i.other_vol),
-                    cumulative_vol: Math.round(cumulative_vol)
+                    cumulative_vol: cum_vol
                 }
             })
 
@@ -56,7 +58,7 @@ async function getVolume() {
             const other_share = (other_vol / total_vol * 100).toFixed(2);
             const spread = us_election_share - other_share > 0 ? "+" + (us_election_share - other_share).toFixed(2) + ' pts' : (us_election_share - other_share).toFixed(2) + ' pts'
             shares_rows.push({ month, us_election_share: us_election_share + "%", other_share: other_share + "%", spread });
-            shares_rows_raw.push({ month, us_election_share: us_election_share, other_share: other_share, spread:  us_election_share - other_share });
+            shares_rows_raw.push({ month, us_election_share: us_election_share, other_share: other_share, spread: us_election_share - other_share });
         }
 
         const shares = {
